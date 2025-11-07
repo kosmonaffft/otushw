@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    hostname: postgres
+    environment:
+      POSTGRES_DB: otushw
+      POSTGRES_USER: otushwuser
+      POSTGRES_PASSWORD: SeCrEt
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  otushw-web-back:
+    image: otushw-web-back:1.0.0
+    build:
+      context: ./otushw-web-back
+    depends_on:
+      - postgres
+    environment:
+      OTHW_CONNECTION_STRING: postgresql://otushwuser:SeCrEt@postgres:5432/otushw
+
+volumes:
+  postgres_data:
