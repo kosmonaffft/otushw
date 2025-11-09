@@ -1113,6 +1113,7 @@ dependencies = [
  "bb8-postgres",
  "env_logger",
  "envy",
+ "log",
  "postgres",
  "refinery",
  "serde",

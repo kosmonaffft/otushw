@@ -1,21 +1,18 @@
 # Упрощенная версия с использованием scratch образа
-FROM rust:1.91.0-alpine AS builder
+FROM rust:1.91.0-slim-bullseye
 
-RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static libc-dev gcc
+RUN apt-get update && apt-get install -y pkg-config libssl-dev
 
 WORKDIR /app
 COPY fake_main.rs src/main.rs
 COPY Cargo.toml Cargo.toml
-RUN cargo build --release
+RUN cargo build
 RUN rm src/main.rs
 
 COPY migrations migrations
 COPY src src
-RUN cargo build --release
+RUN cargo build
 
-FROM alpine:3.22.2
+EXPOSE 8080
 
-COPY --from=builder /app/target/release/otushw-web-back /
-
-ENTRYPOINT exec "/otushw-web-back"
-CMD []
+CMD ["/app/target/debug/otushw-web-back"]

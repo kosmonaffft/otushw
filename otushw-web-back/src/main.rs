@@ -5,6 +5,7 @@ use crate::handlers::login;
 use actix_web::{App, HttpServer};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use log::info;
 use refinery::embed_migrations;
 use serde::Deserialize;
 use std::str::FromStr;
@@ -20,23 +21,18 @@ struct Config {
 type SyncConfig = postgres::config::Config;
 type AsyncConfig = tokio_postgres::config::Config;
 
-fn print_migrations() {
-    println!("Available migrations:");
-    for migration in migrations::runner().get_migrations() {
-        println!("- {}: {}", migration.version(), migration.name());
-    }
-}
-
 fn main() -> std::io::Result<()> {
-    print_migrations();
     env_logger::init();
+    info!("Starting up...");
 
+    info!("Parsing connection string...");
     let app_config = envy::prefixed("OTHW_").from_env::<Config>().unwrap();
 
+    info!("Migrating DB...");
     migrate_db(&app_config);
 
+    info!("Starting actix server...");
     let system = actix_web::rt::System::new();
-
     system.block_on(async {
         let async_config = AsyncConfig::from_str(app_config.connection_string.as_str()).unwrap();
         let manager = PostgresConnectionManager::new(async_config, NoTls);

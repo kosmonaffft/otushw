@@ -8,17 +8,28 @@ services:
       POSTGRES_PASSWORD: SeCrEt
     ports:
       - "5432:5432"
+    networks:
+      - otushw-network
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   otushw-web-back:
     image: otushw-web-back:1.0.0
+    hostname: otushw-web-back
     build:
       context: ./otushw-web-back
     depends_on:
       - postgres
     environment:
+      RUST_LOG: info
       OTHW_CONNECTION_STRING: postgresql://otushwuser:SeCrEt@postgres:5432/otushw
-
+    ports:
+      - "8080:8080"
+    networks:
+      - otushw-network
 volumes:
   postgres_data:
+
+networks:
+  otushw-network:
+    driver: bridge
