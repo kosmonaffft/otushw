@@ -11,6 +11,11 @@ postgres = { version = "0.19.12" }
 refinery = { version = "0.9.0", features = ["postgres", "int8-versions"] }
 bb8 = { version = "0.9.0" }
 bb8-postgres = { version = "0.9.0" }
-tokio-postgres = { version = "0.7.15" }
+tokio-postgres = { version = "0.7.15", features = ["with-chrono-0_4", "with-uuid-1"] }
 log = { version = "0.4.28" }
 env_logger = { version = "0.11.8" }
+chrono = { version = "0.4.42", features = ["serde"] }
+thiserror = { version = "2.0.17" }
+argon2 = { version = "0.6.0-rc.2", features = ["getrandom"] }
+uuid = { version = "1.18.1", features = ["v4", "serde"] }
+jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }

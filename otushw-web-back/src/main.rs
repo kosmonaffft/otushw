@@ -1,7 +1,9 @@
+mod errors;
 mod handlers;
 mod types;
 
-use crate::handlers::login;
+use crate::handlers::{login, register};
+use actix_web::web::Data;
 use actix_web::{App, HttpServer};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
@@ -16,6 +18,11 @@ embed_migrations!("migrations");
 #[derive(Deserialize, Debug)]
 struct Config {
     connection_string: String,
+}
+
+#[derive(Clone)]
+struct AppData {
+    pool: Pool<PostgresConnectionManager<NoTls>>,
 }
 
 type SyncConfig = postgres::config::Config;
@@ -38,10 +45,17 @@ fn main() -> std::io::Result<()> {
         let manager = PostgresConnectionManager::new(async_config, NoTls);
         let pool = Pool::builder().build(manager).await.unwrap();
 
-        HttpServer::new(|| App::new().service(login))
-            .bind(("127.0.0.1", 8080))?
-            .run()
-            .await
+        let app_data = AppData { pool };
+
+        HttpServer::new(move || {
+            App::new()
+                .app_data(Data::new(app_data.clone()))
+                .service(login)
+                .service(register)
+        })
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await
     })
 }
 
