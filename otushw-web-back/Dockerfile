@@ -1,18 +1,18 @@
 # Упрощенная версия с использованием scratch образа
-FROM rust:1.91.0-slim-bullseye
+FROM rust:1.91.1-alpine3.22 AS build
 
-RUN apt-get update && apt-get install -y pkg-config libssl-dev
+RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static
 
 WORKDIR /app
-COPY fake_main.rs src/main.rs
 COPY Cargo.toml Cargo.toml
-RUN cargo build
-RUN rm src/main.rs
-
 COPY migrations migrations
 COPY src src
-RUN cargo build
+RUN cargo build --release --target x86_64-unknown-linux-musl
+
+FROM scratch
+
+COPY --from=build /app/target/x86_64-unknown-linux-musl/release/otushw-web-back /otushw-web-back
 
 EXPOSE 8080
 
-CMD ["/app/target/debug/otushw-web-back"]
+CMD ["/otushw-web-back"]

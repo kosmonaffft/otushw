@@ -1,3 +1,4 @@
+use chrono::naive::serde::ts_seconds;
 use chrono::{NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -5,6 +6,8 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Claims {
     pub id: Uuid,
+
+    #[serde(with = "ts_seconds")]
     pub exp: NaiveDateTime,
 }
 

@@ -2,7 +2,7 @@ mod errors;
 mod handlers;
 mod types;
 
-use crate::handlers::{login, register};
+use crate::handlers::{login, register, get};
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
 use bb8::Pool;
@@ -52,6 +52,7 @@ fn main() -> std::io::Result<()> {
                 .app_data(Data::new(app_data.clone()))
                 .service(login)
                 .service(register)
+                .service(get)
         })
         .bind(("127.0.0.1", 8080))?
         .run()
