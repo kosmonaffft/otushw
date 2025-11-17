@@ -21,6 +21,7 @@ pub struct LoginRequest {
 pub struct RegisterRequest {
     pub first_name: String,
     pub second_name: String,
+    pub is_male: bool,
     pub birthdate: NaiveDate,
     pub biography: String,
     pub city: String,
@@ -32,6 +33,7 @@ pub struct RegisterResponse {
     pub id: Uuid,
     pub first_name: String,
     pub second_name: String,
+    pub is_male: bool,
     pub birthdate: NaiveDate,
     pub biography: String,
     pub city: String,

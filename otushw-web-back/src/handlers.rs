@@ -24,7 +24,7 @@ async fn get(
     let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
     let row = connection
         .query_one(
-            "SELECT u.first_name, u.second_name, u.birthdate, u.biography, u.city FROM users u WHERE u.id = $1",
+            "SELECT u.first_name, u.second_name, u.is_male, u.birthdate, u.biography, u.city FROM users u WHERE u.id = $1",
             &[&uuid],
         )
         .await
@@ -33,9 +33,10 @@ async fn get(
         id: uuid,
         first_name: row.try_get(0).map_err(MyError::TokioPostgresError)?,
         second_name: row.try_get(1).map_err(MyError::TokioPostgresError)?,
-        birthdate: row.try_get(2).map_err(MyError::TokioPostgresError)?,
-        biography: row.try_get(3).map_err(MyError::TokioPostgresError)?,
-        city: row.try_get(4).map_err(MyError::TokioPostgresError)?,
+        is_male: row.try_get(2).map_err(MyError::TokioPostgresError)?,
+        birthdate: row.try_get(3).map_err(MyError::TokioPostgresError)?,
+        biography: row.try_get(4).map_err(MyError::TokioPostgresError)?,
+        city: row.try_get(5).map_err(MyError::TokioPostgresError)?,
     };
     Ok(HttpResponse::Ok().json(result))
 }
@@ -90,14 +91,15 @@ async fn register(
     let row = connection
         .query_one(
             "INSERT INTO users
-                      (id, password_hash, first_name, second_name, birthdate, biography, city)
-                      VALUES ($1, $2, $3, $4, $5, $6, $7)
-                      RETURNING id, first_name, second_name, birthdate, biography, city",
+                      (id, password_hash, first_name, second_name, is_male, birthdate, biography, city)
+                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                      RETURNING id, first_name, second_name, is_male, birthdate, biography, city",
             &[
                 &id,
                 &password_hash,
                 &request.first_name,
                 &request.second_name,
+                &request.is_male,
                 &request.birthdate,
                 &request.biography,
                 &request.city,
@@ -109,9 +111,10 @@ async fn register(
         id: row.try_get(0).map_err(MyError::TokioPostgresError)?,
         first_name: row.try_get(1).map_err(MyError::TokioPostgresError)?,
         second_name: row.try_get(2).map_err(MyError::TokioPostgresError)?,
-        birthdate: row.try_get(3).map_err(MyError::TokioPostgresError)?,
-        biography: row.try_get(4).map_err(MyError::TokioPostgresError)?,
-        city: row.try_get(5).map_err(MyError::TokioPostgresError)?,
+        is_male: row.try_get(3).map_err(MyError::TokioPostgresError)?,
+        birthdate: row.try_get(4).map_err(MyError::TokioPostgresError)?,
+        biography: row.try_get(5).map_err(MyError::TokioPostgresError)?,
+        city: row.try_get(6).map_err(MyError::TokioPostgresError)?,
     };
     Ok(HttpResponse::Ok().json(response))
 }

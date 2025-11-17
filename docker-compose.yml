@@ -32,4 +32,3 @@ volumes:
 
 networks:
   otushw-network:
-    driver: bridge
