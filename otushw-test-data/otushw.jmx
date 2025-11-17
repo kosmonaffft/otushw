@@ -20,7 +20,7 @@
         </elementProp>
       </ThreadGroup>
       <hashTree>
-        <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="Variables">
+        <Arguments guiclass="ArgumentsPanel" testclass="Arguments" testname="Variables" enabled="true">
           <collectionProp name="Arguments.arguments">
             <elementProp name="othw_host" elementType="Argument">
               <stringProp name="Argument.name">othw_host</stringProp>
@@ -35,6 +35,28 @@
           </collectionProp>
         </Arguments>
         <hashTree/>
+        <com.blazemeter.jmeter.RandomCSVDataSetConfig guiclass="com.blazemeter.jmeter.RandomCSVDataSetConfigGui" testclass="com.blazemeter.jmeter.RandomCSVDataSetConfig" testname="NameGenerator">
+          <stringProp name="filename">names.csv</stringProp>
+          <stringProp name="fileEncoding">UTF-8</stringProp>
+          <stringProp name="delimiter">,</stringProp>
+          <stringProp name="variableNames">othw_rnd_name_id,othw_rnd_name_is_male,othw_rnd_name</stringProp>
+          <boolProp name="randomOrder">true</boolProp>
+          <boolProp name="ignoreFirstLine">false</boolProp>
+          <boolProp name="rewindOnTheEndOfList">true</boolProp>
+          <boolProp name="independentListPerThread">false</boolProp>
+        </com.blazemeter.jmeter.RandomCSVDataSetConfig>
+        <hashTree/>
+        <com.blazemeter.jmeter.RandomCSVDataSetConfig guiclass="com.blazemeter.jmeter.RandomCSVDataSetConfigGui" testclass="com.blazemeter.jmeter.RandomCSVDataSetConfig" testname="SecondNameGenerator">
+          <stringProp name="filename">second_names.csv</stringProp>
+          <stringProp name="fileEncoding">UTF-8</stringProp>
+          <stringProp name="delimiter">,</stringProp>
+          <stringProp name="variableNames">othw_rnd_second_name_id,othw_rnd_second_name</stringProp>
+          <boolProp name="randomOrder">true</boolProp>
+          <boolProp name="ignoreFirstLine">false</boolProp>
+          <boolProp name="rewindOnTheEndOfList">true</boolProp>
+          <boolProp name="independentListPerThread">false</boolProp>
+        </com.blazemeter.jmeter.RandomCSVDataSetConfig>
+        <hashTree/>
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="RegisterRequest">
           <stringProp name="HTTPSampler.domain">${othw_host}</stringProp>
           <stringProp name="HTTPSampler.port">${othw_port}</stringProp>
@@ -48,9 +70,9 @@
               <elementProp name="" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
                 <stringProp name="Argument.value">{&#xd;
-    &quot;first_name&quot;: &quot;${__RandomString(8,ЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁйцукенгшщзхъфывапролджэячсмитьбюё,othw_register_second_name)}&quot;,&#xd;
-    &quot;second_name&quot;: &quot;${__RandomString(16,ЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁйцукенгшщзхъфывапролджэячсмитьбюё,othw_register_second_name)}&quot;,&#xd;
-    &quot;is_male&quot;: true,&#xd;
+    &quot;first_name&quot;: &quot;${othw_rnd_name}&quot;,&#xd;
+    &quot;second_name&quot;: &quot;${othw_rnd_second_name}&quot;,&#xd;
+    &quot;is_male&quot;: ${othw_rnd_name_is_male},&#xd;
     &quot;birthdate&quot;: &quot;${__RandomDate(,1900-01-01,,,)}&quot;,&#xd;
     &quot;biography&quot;: &quot;${__RandomString(256,ЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ йцукенгшщзхъфывапролджэячсмитьбюё,othw_register_bio)}&quot;,&#xd;
     &quot;city&quot;: &quot;${__RandomString(8,ЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁйцукенгшщзхъфывапролджэячсмитьбюё,othw_register_city)}&quot;,&#xd;
@@ -62,7 +84,7 @@
           </elementProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager">
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
             <collectionProp name="HeaderManager.headers">
               <elementProp name="" elementType="Header">
                 <stringProp name="Header.name">Accept</stringProp>
@@ -75,7 +97,7 @@
             </collectionProp>
           </HeaderManager>
           <hashTree/>
-          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor">
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="JSON Extractor" enabled="true">
             <stringProp name="JSONPostProcessor.referenceNames">othw_registered_id</stringProp>
             <stringProp name="JSONPostProcessor.jsonPathExprs">$.id</stringProp>
             <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
@@ -158,7 +180,7 @@
           <hashTree/>
         </hashTree>
       </hashTree>
-      <DebugPostProcessor guiclass="TestBeanGUI" testclass="DebugPostProcessor" testname="Debug PostProcessor">
+      <DebugPostProcessor guiclass="TestBeanGUI" testclass="DebugPostProcessor" testname="Debug PostProcessor" enabled="true">
         <boolProp name="displayJMeterProperties">false</boolProp>
         <boolProp name="displayJMeterVariables">true</boolProp>
         <boolProp name="displaySamplerProperties">true</boolProp>
