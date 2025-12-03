@@ -1,15 +1,82 @@
+use crate::AppData;
 use crate::errors::MyError;
 use crate::types::{Claims, LoginRequest, RegisterRequest, RegisterResponse};
-use crate::AppData;
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder, get, post, web};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use serde::Deserialize;
+use tokio_postgres::types::ToSql;
 use uuid::Uuid;
 
 const SECRET: &'static [u8] = b"mySuper_SECRETTT!!!1111456";
+
+#[derive(Deserialize)]
+struct SearchParams {
+    f: Option<String>,
+    s: Option<String>,
+}
+
+#[get("/search")]
+async fn search(
+    search_params: web::Query<SearchParams>,
+    auth: BearerAuth,
+    app_data: web::Data<AppData>,
+) -> actix_web::Result<impl Responder> {
+    let validation = Validation::default();
+    decode::<Claims>(auth.token(), &DecodingKey::from_secret(SECRET), &validation)
+        .map_err(MyError::JWTError)?;
+    let mut query : String = "SELECT u.id, u.first_name, u.second_name, u.is_male, u.birthdate, u.biography, u.city FROM users u WHERE".into();
+    let mut params: Vec<String> = Vec::new();
+    if search_params.f.is_none() && search_params.s.is_none() {
+        return Ok(HttpResponse::BadRequest().body("Error!!! No filters provided!!!"));
+    }
+    let mut counter = 1;
+    if search_params.f.is_some() {
+        query = query + " u.first_name LIKE $" + &counter.to_string();
+        params.push(format!("{}%", search_params.f.clone().unwrap()));
+        counter += 1;
+    }
+    if search_params.s.is_some() {
+        if counter > 1 {
+            query += " AND"
+        }
+        query = query + " u.second_name LIKE $" + &counter.to_string();
+        params.push(format!("{}%", search_params.s.clone().unwrap()));
+        counter += 1;
+    }
+    let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let params_dyn: Vec<_> = params
+        .iter()
+        .map(|input| input as &(dyn ToSql + Sync))
+        .collect();
+    let rows = connection
+        .query(&query, params_dyn.as_slice())
+        .await
+        .map_err(MyError::TokioPostgresError)?;
+    let result: Vec<Result<RegisterResponse, tokio_postgres::Error>> = rows
+        .iter()
+        .map(|row| {
+            Ok(RegisterResponse {
+                id: row.try_get(0)?,
+                first_name: row.try_get(1)?,
+                second_name: row.try_get(2)?,
+                is_male: row.try_get(3)?,
+                birthdate: row.try_get(4)?,
+                biography: row.try_get(5)?,
+                city: row.try_get(6)?,
+            })
+        })
+        .collect();
+    if result.iter().any(Result::is_err) {
+        Ok(HttpResponse::InternalServerError().body("Error!!! Cannot get result from SQL!!!"))
+    } else {
+        let body: Vec<RegisterResponse> = result.into_iter().map(Result::unwrap).collect();
+        Ok(HttpResponse::Ok().json(body))
+    }
+}
 
 #[get("/get/{id}")]
 async fn get(
