@@ -1,17 +1,13 @@
 use crate::AppData;
 use crate::errors::MyError;
-use crate::types::{Claims, LoginRequest, RegisterRequest, RegisterResponse};
-use actix_web::{HttpResponse, Responder, get, post, web};
+use crate::security::{check_password, generate_token, hash_password, validate_token};
+use crate::types::{LoginRequest, RegisterRequest, RegisterResponse};
+use actix_web::web::{Data, Json, Path, Query};
+use actix_web::{HttpResponse, Responder, get, post};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
-use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use chrono::{Duration, Utc};
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::Deserialize;
 use tokio_postgres::types::ToSql;
 use uuid::Uuid;
-
-const SECRET: &'static [u8] = b"mySuper_SECRETTT!!!1111456";
 
 #[derive(Deserialize)]
 struct SearchParams {
@@ -21,39 +17,53 @@ struct SearchParams {
 
 #[get("/search")]
 async fn search(
-    search_params: web::Query<SearchParams>,
+    args: Query<SearchParams>,
     auth: BearerAuth,
-    app_data: web::Data<AppData>,
+    app_data: Data<AppData>,
 ) -> actix_web::Result<impl Responder> {
-    let validation = Validation::default();
-    decode::<Claims>(auth.token(), &DecodingKey::from_secret(SECRET), &validation)
-        .map_err(MyError::JWTError)?;
-    let mut query : String = "SELECT u.id, u.first_name, u.second_name, u.is_male, u.birthdate, u.biography, u.city FROM users u WHERE".into();
-    let mut params: Vec<String> = Vec::new();
-    if search_params.f.is_none() && search_params.s.is_none() {
+    validate_token(&auth)?;
+    if args.f.is_none() && args.s.is_none() {
         return Ok(HttpResponse::BadRequest().body("Error!!! No filters provided!!!"));
     }
+
+    let mut query: String = "
+        SELECT u.id,
+               u.first_name,
+               u.second_name,
+               u.is_male,
+               u.birthdate,
+               u.biography,
+               u.city
+        FROM users u
+        WHERE
+        "
+    .into();
+
     let mut counter = 1;
-    if search_params.f.is_some() {
-        query = query + " u.first_name LIKE $" + &counter.to_string();
-        params.push(format!("{}%", search_params.f.clone().unwrap()));
+    let mut params: Vec<String> = Vec::new();
+    if args.f.is_some() {
+        query.push_str(format!(" u.first_name LIKE ${}", counter).as_str());
+        params.push(format!("{}%", args.f.clone().unwrap()));
         counter += 1;
     }
-    if search_params.s.is_some() {
+    if args.s.is_some() {
         if counter > 1 {
-            query += " AND"
+            query.push_str(" AND");
         }
-        query = query + " u.second_name LIKE $" + &counter.to_string();
-        params.push(format!("{}%", search_params.s.clone().unwrap()));
-        counter += 1;
+        query.push_str(format!(" u.second_name LIKE ${}", counter).as_str());
+        params.push(format!("{}%", args.s.clone().unwrap()));
     }
+    query.push_str(" ORDER BY u.id");
     let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
-    let params_dyn: Vec<_> = params
-        .iter()
-        .map(|input| input as &(dyn ToSql + Sync))
-        .collect();
     let rows = connection
-        .query(&query, params_dyn.as_slice())
+        .query(
+            &query,
+            params
+                .iter()
+                .map(|p| p as &(dyn ToSql + Sync))
+                .collect::<Vec<&(dyn ToSql + Sync)>>()
+                .as_slice(),
+        )
         .await
         .map_err(MyError::TokioPostgresError)?;
     let result: Vec<Result<RegisterResponse, tokio_postgres::Error>> = rows
@@ -80,20 +90,25 @@ async fn search(
 
 #[get("/get/{id}")]
 async fn get(
-    id: web::Path<Uuid>,
+    id: Path<Uuid>,
     auth: BearerAuth,
-    app_data: web::Data<AppData>,
+    app_data: Data<AppData>,
 ) -> actix_web::Result<impl Responder> {
-    let validation = Validation::default();
-    decode::<Claims>(auth.token(), &DecodingKey::from_secret(SECRET), &validation)
-        .map_err(MyError::JWTError)?;
+    validate_token(&auth)?;
     let uuid: Uuid = id.into_inner();
     let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let sql = "
+        SELECT u.first_name,
+               u.second_name,
+               u.is_male,
+               u.birthdate,
+               u.biography,
+               u.city
+        FROM users u
+        WHERE u.id = $1
+        ";
     let row = connection
-        .query_one(
-            "SELECT u.first_name, u.second_name, u.is_male, u.birthdate, u.biography, u.city FROM users u WHERE u.id = $1",
-            &[&uuid],
-        )
+        .query_one(sql, &[&uuid])
         .await
         .map_err(MyError::TokioPostgresError)?;
     let result = RegisterResponse {
@@ -110,8 +125,8 @@ async fn get(
 
 #[post("/login")]
 async fn login(
-    request: web::Json<LoginRequest>,
-    app_data: web::Data<AppData>,
+    request: Json<LoginRequest>,
+    app_data: Data<AppData>,
 ) -> actix_web::Result<impl Responder> {
     let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
     let row = connection
@@ -122,45 +137,41 @@ async fn login(
         .await
         .map_err(MyError::TokioPostgresError)?;
     let hash_str: String = row.try_get(1).map_err(MyError::TokioPostgresError)?;
-    let argon2 = Argon2::default();
-    let hash = PasswordHash::new(&hash_str).map_err(MyError::ArgonError)?;
-    argon2
-        .verify_password(&request.password.as_bytes(), &hash)
-        .map_err(MyError::ArgonError)?;
-    let now = Utc::now();
-    let expiration = now + Duration::minutes(15);
-    let claims = Claims {
-        id: request.id,
-        exp: expiration.naive_utc(),
-    };
-    let token = encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(SECRET),
-    )
-    .map_err(MyError::JWTError)?;
+    check_password(&request.password, &hash_str)?;
+    let token = generate_token(request.id)?;
     Ok(HttpResponse::Ok().json(token))
 }
 
 #[post("/register")]
 async fn register(
-    request: web::Json<RegisterRequest>,
-    app_data: web::Data<AppData>,
+    request: Json<RegisterRequest>,
+    app_data: Data<AppData>,
 ) -> actix_web::Result<impl Responder> {
-    let salt = SaltString::generate();
-    let argon2 = Argon2::default();
-    let password_hash = argon2
-        .hash_password(request.password.as_bytes(), &salt)
-        .map_err(MyError::ArgonError)?
-        .to_string();
+    let password_hash = hash_password(&request.password)?;
     let id = Uuid::new_v4();
     let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let sql = "
+        INSERT INTO users (
+            id,
+            password_hash,
+            first_name,
+            second_name,
+            is_male,
+            birthdate,
+            biography,
+            city
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING
+            id,
+            first_name,
+            second_name,
+            is_male,
+            birthdate,
+            biography,
+            city";
     let row = connection
         .query_one(
-            "INSERT INTO users
-                      (id, password_hash, first_name, second_name, is_male, birthdate, biography, city)
-                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                      RETURNING id, first_name, second_name, is_male, birthdate, biography, city",
+            sql,
             &[
                 &id,
                 &password_hash,

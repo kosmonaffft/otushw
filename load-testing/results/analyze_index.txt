@@ -1,0 +1,14 @@
+Sort  (cost=23715.29..23728.21 rows=5167 width=696) (actual time=100.685..101.948 rows=6654 loops=1)
+  Sort Key: id
+  Sort Method: external merge  Disk: 4632kB
+  ->  Bitmap Heap Scan on users u  (cost=2563.12..23396.62 rows=5167 width=696) (actual time=28.142..84.671 rows=6654 loops=1)
+        Filter: ((first_name ~~ 'А%'::text) AND (second_name ~~ 'А%'::text))
+        Rows Removed by Filter: 11153
+        Heap Blocks: exact=15315
+        ->  BitmapAnd  (cost=2563.12..2563.12 rows=6547 width=0) (actual time=26.500..26.502 rows=0 loops=1)
+              ->  Bitmap Index Scan on idx_users__second_name  (cost=0.00..629.09 rows=46066 width=0) (actual time=7.180..7.180 rows=44019 loops=1)
+                    Index Cond: ((second_name ~>=~ 'А'::text) AND (second_name ~<~ 'Б'::text))
+              ->  Bitmap Index Scan on idx_users__first_name  (cost=0.00..1931.20 rows=142278 width=0) (actual time=17.069..17.069 rows=139893 loops=1)
+                    Index Cond: ((first_name ~>=~ 'А'::text) AND (first_name ~<~ 'Б'::text))
+Planning Time: 6.998 ms
+Execution Time: 104.281 ms

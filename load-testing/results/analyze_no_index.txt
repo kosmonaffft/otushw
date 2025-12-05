@@ -1,0 +1,24 @@
+EXPLAIN ANALYSE
+SELECT u.id, u.first_name, u.second_name, u.is_male, u.birthdate, u.biography, u.city
+FROM users u
+WHERE u.first_name like 'А%'
+  and u.second_name like 'А%'
+ORDER BY u.id;
+
+Gather Merge  (cost=113162.72..113716.46 rows=4746 width=693) (actual time=860.094..871.291 rows=6654 loops=1)
+  Workers Planned: 2
+  Workers Launched: 2
+  ->  Sort  (cost=112162.70..112168.63 rows=2373 width=693) (actual time=835.276..835.556 rows=2218 loops=3)
+        Sort Key: id
+        Sort Method: quicksort  Memory: 1766kB
+        Worker 0:  Sort Method: quicksort  Memory: 1672kB
+        Worker 1:  Sort Method: quicksort  Memory: 1690kB
+        ->  Parallel Seq Scan on users u  (cost=0.00..112029.66 rows=2373 width=693) (actual time=6.327..829.177 rows=2218 loops=3)
+              Filter: ((first_name ~~ 'А%'::text) AND (second_name ~~ 'А%'::text))
+              Rows Removed by Filter: 331116
+Planning Time: 3.237 ms
+JIT:
+  Functions: 12
+"  Options: Inlining false, Optimization false, Expressions true, Deforming true"
+"  Timing: Generation 3.560 ms, Inlining 0.000 ms, Optimization 2.173 ms, Emission 14.771 ms, Total 20.504 ms"
+Execution Time: 875.165 ms

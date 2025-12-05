@@ -1,6 +1,7 @@
 mod errors;
 mod handlers;
 mod types;
+mod security;
 
 use crate::handlers::{get, login, register, search};
 use actix_web::web::Data;
