@@ -1,9 +1,11 @@
 mod errors;
 mod handlers;
-mod types;
 mod security;
+mod types;
 
-use crate::handlers::{get, login, register, search};
+use crate::handlers::friends::{add_friend, delete_friend};
+use crate::handlers::posts::add_post;
+use crate::handlers::users::{get_user, login, register_user, search_user};
 use actix_web::web::Data;
 use actix_web::{App, HttpServer};
 use bb8::Pool;
@@ -52,9 +54,12 @@ fn main() -> std::io::Result<()> {
             App::new()
                 .app_data(Data::new(app_data.clone()))
                 .service(login)
-                .service(register)
-                .service(get)
-                .service(search)
+                .service(register_user)
+                .service(get_user)
+                .service(search_user)
+                .service(add_friend)
+                .service(delete_friend)
+                .service(add_post)
         })
         .workers(32)
         .bind("0.0.0.0:8080")?

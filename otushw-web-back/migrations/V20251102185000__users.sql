@@ -1,6 +1,6 @@
 -- Table for raw users.
 
-CREATE TABLE users
+CREATE TABLE IF NOT EXISTS users
 (
     id            UUID,
     password_hash TEXT NOT NULL,

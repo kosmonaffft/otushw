@@ -40,9 +40,9 @@ pub fn generate_token(id: Uuid) -> Result<String, MyError> {
     Ok(token)
 }
 
-pub fn validate_token(auth: &BearerAuth) -> Result<(), MyError> {
+pub fn validate_token(auth: &BearerAuth) -> Result<Uuid, MyError> {
     let validation = Validation::default();
-    decode::<Claims>(auth.token(), &DecodingKey::from_secret(SECRET), &validation)
+    let decoded = decode::<Claims>(auth.token(), &DecodingKey::from_secret(SECRET), &validation)
         .map_err(MyError::JWTError)?;
-    Ok(())
+    Ok(decoded.claims.id)
 }
