@@ -14,6 +14,9 @@ pub enum MyError {
     #[error("password hash error")]
     ArgonError(#[from] password_hash::Error),
 
+    #[error("password hash phc error")]
+    ArgonPhcError(#[from] password_hash::phc::Error),
+
     #[error("jwt error")]
     JWTError(#[from] jsonwebtoken::errors::Error),
 }
@@ -31,6 +34,7 @@ impl actix_web::ResponseError for MyError {
             }
             MyError::ArgonError(e) => HttpResponse::InternalServerError().json(e.to_string()),
             MyError::JWTError(e) => HttpResponse::InternalServerError().json(e.to_string()),
+            MyError::ArgonPhcError(e) => HttpResponse::InternalServerError().json(e.to_string()),
         }
     }
 }

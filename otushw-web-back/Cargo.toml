@@ -17,6 +17,6 @@ log = { version = "0.4.29" }
 env_logger = { version = "0.11.8" }
 chrono = { version = "0.4.42", features = ["serde"] }
 thiserror = { version = "2.0.17" }
-argon2 = { version = "0.6.0-rc.2", features = ["getrandom"] }
+argon2 = { version = "0.6.0-rc.5", features = ["getrandom"] }
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
 jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
