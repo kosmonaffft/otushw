@@ -1,5 +1,5 @@
 # Упрощенная версия с использованием scratch образа
-FROM rust:trixie AS build
+FROM rust:1.93-trixie AS build
 
 WORKDIR /app
 COPY Cargo.toml Cargo.toml

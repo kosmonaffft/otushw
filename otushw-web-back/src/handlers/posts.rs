@@ -5,6 +5,7 @@ use actix_web::web::{Data, Json};
 use actix_web::{HttpResponse, Responder, post};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use chrono::{DateTime, Utc};
+use redis::AsyncTypedCommands;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -13,7 +14,7 @@ struct CreatePostRequest {
     body: String,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 struct CreatePostResponse {
     id: Uuid,
     user_id: Uuid,
@@ -36,7 +37,7 @@ async fn add_post(
         "
     .into();
 
-    let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let connection = app_data.pg_pool.get().await.map_err(MyError::PgPoolError)?;
     connection
         .execute(&query, &[&id, &my_id, &now, &body.0.body])
         .await
@@ -47,5 +48,18 @@ async fn add_post(
         ts: now,
         body: body.0.body,
     };
-    Ok(HttpResponse::Ok().json(response))
+
+    let mut redis_conection = app_data
+        .redis_pool
+        .get()
+        .await
+        .map_err(MyError::RedisPoolError)?;
+
+    let serialized = serde_json::to_string(&response).map_err(MyError::SerdeError)?;
+    redis_conection
+        .rpush(format!("feed_for:{}", my_id), &serialized)
+        .await
+        .map_err(MyError::RedisError)?;
+
+    Ok(HttpResponse::Ok().body(serialized))
 }

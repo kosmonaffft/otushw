@@ -34,7 +34,7 @@ async fn search_user(
                u.birthdate,
                u.biography,
                u.city
-        FROM handlers u
+        FROM users u
         WHERE
         "
     .into();
@@ -54,7 +54,7 @@ async fn search_user(
         params.push(format!("{}%", args.s.clone().unwrap()));
     }
     query.push_str(" ORDER BY u.id");
-    let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let connection = app_data.pg_pool.get().await.map_err(MyError::PgPoolError)?;
     let rows = connection
         .query(
             &query,
@@ -96,7 +96,7 @@ async fn get_user(
 ) -> actix_web::Result<impl Responder> {
     validate_token(&auth)?;
     let uuid: Uuid = id.into_inner();
-    let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let connection = app_data.pg_pool.get().await.map_err(MyError::PgPoolError)?;
     let sql = "
         SELECT u.first_name,
                u.second_name,
@@ -128,10 +128,10 @@ async fn login(
     request: Json<LoginRequest>,
     app_data: Data<AppData>,
 ) -> actix_web::Result<impl Responder> {
-    let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let connection = app_data.pg_pool.get().await.map_err(MyError::PgPoolError)?;
     let row = connection
         .query_one(
-            "SELECT u.id, u.password_hash FROM handlers u WHERE u.id = $1",
+            "SELECT u.id, u.password_hash FROM users u WHERE u.id = $1",
             &[&request.id],
         )
         .await
@@ -149,7 +149,7 @@ async fn register_user(
 ) -> actix_web::Result<impl Responder> {
     let password_hash = hash_password(&request.password)?;
     let id = Uuid::new_v4();
-    let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let connection = app_data.pg_pool.get().await.map_err(MyError::PgPoolError)?;
     let sql = "
         INSERT INTO handlers (
             id,

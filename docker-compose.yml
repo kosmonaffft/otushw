@@ -13,6 +13,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:8.4.0-alpine
+    hostname: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - otushw-network
+    volumes:
+      - redis_data:/data
+
   otushw-web-back:
     image: otushw-web-back:1.0.0
     hostname: otushw-web-back
@@ -20,15 +30,18 @@ services:
       context: ./otushw-web-back
     depends_on:
       - postgres
+      - redis
     environment:
       RUST_LOG: info
-      OTHW_CONNECTION_STRING: postgresql://otushwuser:SeCrEt@postgres:5432/otushw
+      OTHW_PG_CONNECTION_STRING: postgresql://otushwuser:SeCrEt@postgres:5432/otushw
+      OTHW_REDIS_CONNECTION_STRING: redis://redis/
     ports:
       - "8080:8080"
     networks:
       - otushw-network
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   otushw-network:

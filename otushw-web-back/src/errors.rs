@@ -5,8 +5,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum MyError {
-    #[error("bb8 pool error")]
-    PoolError(#[from] bb8::RunError<tokio_postgres::Error>),
+    #[error("bb8 pg pool error")]
+    PgPoolError(#[from] bb8::RunError<tokio_postgres::Error>),
+
+    #[error("bb8 redis pool error")]
+    RedisPoolError(#[from] bb8::RunError<redis::RedisError>),
 
     #[error("tokio postgres error")]
     TokioPostgresError(#[from] tokio_postgres::Error),
@@ -19,6 +22,12 @@ pub enum MyError {
 
     #[error("jwt error")]
     JWTError(#[from] jsonwebtoken::errors::Error),
+
+    #[error("redis error")]
+    RedisError(#[from] redis::RedisError),
+
+    #[error("serde error")]
+    SerdeError(#[from] serde_json::error::Error),
 }
 
 impl actix_web::ResponseError for MyError {
@@ -28,13 +37,16 @@ impl actix_web::ResponseError for MyError {
 
     fn error_response(&self) -> HttpResponse<BoxBody> {
         match self {
-            MyError::PoolError(e) => HttpResponse::InternalServerError().json(e.to_string()),
+            MyError::PgPoolError(e) => HttpResponse::InternalServerError().json(e.to_string()),
+            MyError::RedisPoolError(e) => HttpResponse::InternalServerError().json(e.to_string()),
             MyError::TokioPostgresError(e) => {
                 HttpResponse::InternalServerError().json(e.to_string())
             }
             MyError::ArgonError(e) => HttpResponse::InternalServerError().json(e.to_string()),
             MyError::JWTError(e) => HttpResponse::InternalServerError().json(e.to_string()),
             MyError::ArgonPhcError(e) => HttpResponse::InternalServerError().json(e.to_string()),
+            MyError::RedisError(e) => HttpResponse::InternalServerError().json(e.to_string()),
+            MyError::SerdeError(e) => HttpResponse::InternalServerError().json(e.to_string()),
         }
     }
 }

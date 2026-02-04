@@ -28,10 +28,10 @@ async fn add_friend(
         "
     .into();
 
-    let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let connection = app_data.pg_pool.get().await.map_err(MyError::PgPoolError)?;
     let to_id = id.into_inner();
     connection
-        .execute(&query, &[&to_id, &my_id])
+        .execute(&query, &[&my_id, &to_id])
         .await
         .map_err(MyError::TokioPostgresError)?;
     let response = AddFriendResponse {
@@ -55,7 +55,7 @@ async fn delete_friend(
         "
     .into();
 
-    let connection = app_data.pool.get().await.map_err(MyError::PoolError)?;
+    let connection = app_data.pg_pool.get().await.map_err(MyError::PgPoolError)?;
     let to_id = id.into_inner();
     connection
         .execute(&query, &[&to_id, &my_id])
