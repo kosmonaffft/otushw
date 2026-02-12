@@ -3,13 +3,15 @@ import random
 import urllib.request
 import urllib.parse
 import urllib.error
-import csv
-import os
 
 if __name__ == "__main__":
     ids_file = open('data/ids_100002.csv', 'r', encoding='utf-8')
     number = 0
+    processed = 656275
     for id_row in ids_file:
+        if number < processed:
+            number = number + 1
+            continue
         url = "http://localhost:8080/login"
         data = {
             "id": id_row.strip(),
@@ -26,21 +28,25 @@ if __name__ == "__main__":
             response_data = json.loads(response.read().decode('utf-8'))
             token = response_data
 
-        big_russian_letters = 'ЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ'
-        random_chars1 = ''.join(random.choice(big_russian_letters) for _ in range(1))
-        random_chars2 = ''.join(random.choice(big_russian_letters) for _ in range(1))
-        search_url = "http://localhost:8080/search"  # замените на реальный URL
-        params = {'f': random_chars1, 's': random_chars2}
-        url = f"{search_url}?{urllib.parse.urlencode(params)}"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "User-Agent": "PythonScript/1.0"
-        }
-        req = urllib.request.Request(url, headers=headers, method='GET')
         friends = []
-        with urllib.request.urlopen(req) as response:
-            response_data = json.loads(response.read().decode('utf-8'))
-            friends = response_data
+        while len(friends) == 0:
+            big_russian_letters = 'ЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮ'
+            small_russian_letters = 'йцукенгшщзхъфывапролджэячсмитьбю'
+            random_chars1 = ''.join(random.choice(big_russian_letters) for _ in range(1))
+            random_chars2 = ''.join(random.choice(small_russian_letters) for _ in range(1))
+            random_chars3 = ''.join(random.choice(big_russian_letters) for _ in range(1))
+            random_chars4 = ''.join(random.choice(small_russian_letters) for _ in range(1))
+            search_url = "http://localhost:8080/search"  # замените на реальный URL
+            params = {'f': random_chars1 + random_chars2, 's': random_chars3 + random_chars4}
+            url = f"{search_url}?{urllib.parse.urlencode(params)}"
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "PythonScript/1.0"
+            }
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req) as response:
+                response_data = json.loads(response.read().decode('utf-8'))
+                friends = response_data
 
         for friend in friends:
             id = friend['id']

@@ -104,7 +104,7 @@ async fn get_user(
                u.birthdate,
                u.biography,
                u.city
-        FROM handlers u
+        FROM users u
         WHERE u.id = $1
         ";
     let row = connection
@@ -151,7 +151,7 @@ async fn register_user(
     let id = Uuid::new_v4();
     let connection = app_data.pg_pool.get().await.map_err(MyError::PgPoolError)?;
     let sql = "
-        INSERT INTO handlers (
+        INSERT INTO users (
             id,
             password_hash,
             first_name,

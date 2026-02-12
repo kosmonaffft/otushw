@@ -11,8 +11,8 @@ use actix_web::web::Data;
 use actix_web::{App, HttpServer};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use bb8_redis::RedisConnectionManager;
 use log::info;
-use redis::{Client};
 use refinery::embed_migrations;
 use serde::Deserialize;
 use std::str::FromStr;
@@ -24,12 +24,16 @@ embed_migrations!("migrations");
 struct Config {
     pg_connection_string: String,
     redis_connection_string: String,
+    use_redis: bool,
+    feed_limit: i32,
 }
 
 #[derive(Clone)]
 struct AppData {
     pg_pool: Pool<PostgresConnectionManager<NoTls>>,
-    redis_pool: Pool<Client>,
+    redis_pool: Pool<RedisConnectionManager>,
+    use_redis: bool,
+    feed_limit: i32,
 }
 
 type SyncConfig = postgres::config::Config;
@@ -53,12 +57,18 @@ fn main() -> std::io::Result<()> {
         let pg_manager = PostgresConnectionManager::new(pg_async_config, NoTls);
         let pg_pool = Pool::builder().build(pg_manager).await.unwrap();
 
-        let redis_client = Client::open(app_config.redis_connection_string.as_str()).unwrap();
-        let redis_pool = Pool::builder().build(redis_client).await.unwrap();
+        let redis_connection_manager =
+            RedisConnectionManager::new(app_config.redis_connection_string.as_str()).unwrap();
+        let redis_pool: Pool<RedisConnectionManager> = Pool::builder()
+            .build(redis_connection_manager)
+            .await
+            .unwrap();
 
         let app_data = AppData {
             pg_pool,
             redis_pool,
+            use_redis: app_config.use_redis,
+            feed_limit: app_config.feed_limit,
         };
 
         HttpServer::new(move || {

@@ -35,6 +35,8 @@ services:
       RUST_LOG: info
       OTHW_PG_CONNECTION_STRING: postgresql://otushwuser:SeCrEt@postgres:5432/otushw
       OTHW_REDIS_CONNECTION_STRING: redis://redis/
+      OTHW_USE_REDIS: false
+      OTHW_FEED_LIMIT: 100
     ports:
       - "8080:8080"
     networks:
