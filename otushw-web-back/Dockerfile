@@ -1,9 +1,10 @@
 # Упрощенная версия с использованием scratch образа
-FROM rust:1.93-trixie AS build
+FROM rust:1.93.1-trixie AS build
 
 WORKDIR /app
 COPY Cargo.toml Cargo.toml
-COPY migrations migrations
+COPY pg_migrations pg_migrations
+COPY citus_migrations citus_migrations
 COPY src src
 RUN cargo build --release
 

@@ -13,16 +13,24 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use bb8_redis::RedisConnectionManager;
 use log::info;
-use refinery::embed_migrations;
 use serde::Deserialize;
 use std::str::FromStr;
 use tokio_postgres::NoTls;
 
-embed_migrations!("migrations");
+mod pg_migrations {
+    use refinery::embed_migrations;
+    embed_migrations!("pg_migrations");
+}
+
+mod citus_migrations {
+    use refinery::embed_migrations;
+    embed_migrations!("citus_migrations");
+}
 
 #[derive(Deserialize, Debug)]
 struct Config {
     pg_connection_string: String,
+    citus_connection_string: String,
     redis_connection_string: String,
     use_redis: bool,
     feed_limit: i32,
@@ -47,7 +55,7 @@ fn main() -> std::io::Result<()> {
     let app_config = envy::prefixed("OTHW_").from_env::<Config>().unwrap();
 
     info!("Migrating DB...");
-    migrate_db(&app_config);
+    migrate_pg_db(&app_config);
 
     info!("Starting actix server...");
     let system = actix_web::rt::System::new();
@@ -90,9 +98,9 @@ fn main() -> std::io::Result<()> {
     })
 }
 
-fn migrate_db(app_config: &Config) {
+fn migrate_pg_db(app_config: &Config) {
     let sync_config = SyncConfig::from_str(app_config.pg_connection_string.as_str()).unwrap();
     let mut sync_postgres = sync_config.connect(NoTls).unwrap();
-    migrations::runner().run(&mut sync_postgres).unwrap();
+    pg_migrations::migrations::runner().run(&mut sync_postgres).unwrap();
     sync_postgres.close().unwrap();
 }

@@ -1,17 +1,21 @@
 services:
-  postgres:
-    image: postgres:15-alpine
-    hostname: postgres
+  pg:
+    image: postgres:18.2
+    hostname: pg
     environment:
-      POSTGRES_DB: otushw
-      POSTGRES_USER: otushwuser
-      POSTGRES_PASSWORD: SeCrEt
+      POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "6432:5432"
     networks:
       - otushw-network
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   redis:
     image: redis:8.4.0-alpine
@@ -22,6 +26,12 @@ services:
       - otushw-network
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   otushw-web-back:
     image: otushw-web-back:1.0.0
@@ -29,11 +39,14 @@ services:
     build:
       context: ./otushw-web-back
     depends_on:
-      - postgres
-      - redis
+      pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       RUST_LOG: info
-      OTHW_PG_CONNECTION_STRING: postgresql://otushwuser:SeCrEt@postgres:5432/otushw
+      OTHW_PG_CONNECTION_STRING: postgresql://postgres:password@pg:5432/postgres
+      OTHW_CITUS_CONNECTION_STRING: postgresql://postgres:password@pg:5432/postgres
       OTHW_REDIS_CONNECTION_STRING: redis://redis/
       OTHW_USE_REDIS: false
       OTHW_FEED_LIMIT: 100
@@ -41,8 +54,10 @@ services:
       - "8080:8080"
     networks:
       - otushw-network
+
 volumes:
   postgres_data:
+  pg_data:
   redis_data:
 
 networks:
