@@ -6,6 +6,7 @@ use actix_web::web::{Data, Json, Path, Query};
 use actix_web::{HttpResponse, Responder, get, post};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use serde::Deserialize;
+use tokio_postgres::GenericClient;
 use tokio_postgres::types::ToSql;
 use uuid::Uuid;
 
@@ -97,29 +98,9 @@ async fn get_user(
     validate_token(&auth)?;
     let uuid: Uuid = id.into_inner();
     let connection = app_data.pg_pool.get().await.map_err(MyError::PgPoolError)?;
-    let sql = "
-        SELECT u.first_name,
-               u.second_name,
-               u.is_male,
-               u.birthdate,
-               u.biography,
-               u.city
-        FROM users u
-        WHERE u.id = $1
-        ";
-    let row = connection
-        .query_one(sql, &[&uuid])
+    let result = find_user(uuid, connection.client())
         .await
-        .map_err(MyError::TokioPostgresError)?;
-    let result = RegisterResponse {
-        id: uuid,
-        first_name: row.try_get(0).map_err(MyError::TokioPostgresError)?,
-        second_name: row.try_get(1).map_err(MyError::TokioPostgresError)?,
-        is_male: row.try_get(2).map_err(MyError::TokioPostgresError)?,
-        birthdate: row.try_get(3).map_err(MyError::TokioPostgresError)?,
-        biography: row.try_get(4).map_err(MyError::TokioPostgresError)?,
-        city: row.try_get(5).map_err(MyError::TokioPostgresError)?,
-    };
+        .map_err(MyError::from)?;
     Ok(HttpResponse::Ok().json(result))
 }
 
@@ -195,4 +176,34 @@ async fn register_user(
         city: row.try_get(6).map_err(MyError::TokioPostgresError)?,
     };
     Ok(HttpResponse::Ok().json(response))
+}
+
+pub(crate) async fn find_user<C: GenericClient>(
+    id: Uuid,
+    connection: &C,
+) -> Result<RegisterResponse, MyError> {
+    let sql = "
+        SELECT u.first_name,
+               u.second_name,
+               u.is_male,
+               u.birthdate,
+               u.biography,
+               u.city
+        FROM users u
+        WHERE u.id = $1
+        ";
+    let row = connection
+        .query_one(sql, &[&id])
+        .await
+        .map_err(MyError::from)?;
+    let result = RegisterResponse {
+        id,
+        first_name: row.try_get(0).map_err(MyError::from)?,
+        second_name: row.try_get(1).map_err(MyError::from)?,
+        is_male: row.try_get(2).map_err(MyError::from)?,
+        birthdate: row.try_get(3).map_err(MyError::from)?,
+        biography: row.try_get(4).map_err(MyError::from)?,
+        city: row.try_get(5).map_err(MyError::from)?,
+    };
+    Ok(result)
 }

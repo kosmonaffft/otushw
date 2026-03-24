@@ -3,6 +3,7 @@ mod handlers;
 mod security;
 mod types;
 
+use crate::handlers::dialogues::{get_dialogues, send_message};
 use crate::handlers::feed::get_feed;
 use crate::handlers::friends::{add_friend, delete_friend};
 use crate::handlers::posts::add_post;
@@ -39,6 +40,7 @@ struct Config {
 #[derive(Clone)]
 struct AppData {
     pg_pool: Pool<PostgresConnectionManager<NoTls>>,
+    citus_pool: Pool<PostgresConnectionManager<NoTls>>,
     redis_pool: Pool<RedisConnectionManager>,
     use_redis: bool,
     feed_limit: i32,
@@ -56,6 +58,7 @@ fn main() -> std::io::Result<()> {
 
     info!("Migrating DB...");
     migrate_pg_db(&app_config);
+    migrate_citus_db(&app_config);
 
     info!("Starting actix server...");
     let system = actix_web::rt::System::new();
@@ -64,6 +67,11 @@ fn main() -> std::io::Result<()> {
             AsyncConfig::from_str(app_config.pg_connection_string.as_str()).unwrap();
         let pg_manager = PostgresConnectionManager::new(pg_async_config, NoTls);
         let pg_pool = Pool::builder().build(pg_manager).await.unwrap();
+
+        let citus_async_config =
+            AsyncConfig::from_str(app_config.citus_connection_string.as_str()).unwrap();
+        let citus_manager = PostgresConnectionManager::new(citus_async_config, NoTls);
+        let citus_pool = Pool::builder().build(citus_manager).await.unwrap();
 
         let redis_connection_manager =
             RedisConnectionManager::new(app_config.redis_connection_string.as_str()).unwrap();
@@ -74,6 +82,7 @@ fn main() -> std::io::Result<()> {
 
         let app_data = AppData {
             pg_pool,
+            citus_pool,
             redis_pool,
             use_redis: app_config.use_redis,
             feed_limit: app_config.feed_limit,
@@ -90,6 +99,8 @@ fn main() -> std::io::Result<()> {
                 .service(delete_friend)
                 .service(add_post)
                 .service(get_feed)
+                .service(send_message)
+                .service(get_dialogues)
         })
         .workers(32)
         .bind("0.0.0.0:8080")?
@@ -101,6 +112,17 @@ fn main() -> std::io::Result<()> {
 fn migrate_pg_db(app_config: &Config) {
     let sync_config = SyncConfig::from_str(app_config.pg_connection_string.as_str()).unwrap();
     let mut sync_postgres = sync_config.connect(NoTls).unwrap();
-    pg_migrations::migrations::runner().run(&mut sync_postgres).unwrap();
+    pg_migrations::migrations::runner()
+        .run(&mut sync_postgres)
+        .unwrap();
+    sync_postgres.close().unwrap();
+}
+
+fn migrate_citus_db(app_config: &Config) {
+    let sync_config = SyncConfig::from_str(app_config.citus_connection_string.as_str()).unwrap();
+    let mut sync_postgres = sync_config.connect(NoTls).unwrap();
+    citus_migrations::migrations::runner()
+        .run(&mut sync_postgres)
+        .unwrap();
     sync_postgres.close().unwrap();
 }

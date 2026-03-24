@@ -1,13 +1,11 @@
 services:
   pg:
-    image: postgres:18.2
+    image: postgres:18.3
     hostname: pg
     environment:
       POSTGRES_PASSWORD: password
     ports:
-      - "6432:5432"
-    networks:
-      - otushw-network
+      - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql
     healthcheck:
@@ -16,14 +14,14 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      - otushw-network
 
   redis:
-    image: redis:8.4.0-alpine
+    image: redis:8.6.2-alpine
     hostname: redis
     ports:
       - "6379:6379"
-    networks:
-      - otushw-network
     volumes:
       - redis_data:/data
     healthcheck:
@@ -32,33 +30,107 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      - otushw-network
+
+  coordinator:
+    image: citusdata/citus:14.0-pg17
+    container_name: citus_coordinator
+    ports:
+      - "6432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - coordinator_data:/var/lib/postgresql
+      - ./init-coordinator.sh:/usr/local/bin/init-coordinator.sh
+    command: >
+      bash -c "
+        export PGPASSWORD=postgres
+        docker-entrypoint.sh postgres &
+        sleep 5
+        while ! pg_isready -U postgres -h localhost; do sleep 2; done
+        /usr/local/bin/init-coordinator.sh
+        wait
+      "
+    depends_on:
+      worker1:
+        condition: service_healthy
+      worker2:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - otushw-network
+
+  worker1:
+    image: citusdata/citus:14.0-pg17
+    container_name: citus_worker1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - worker1_data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - otushw-network
+
+  worker2:
+    image: citusdata/citus:14.0-pg17
+    container_name: citus_worker2
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - worker2_data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - otushw-network
 
   otushw-web-back:
     image: otushw-web-back:1.0.0
-    hostname: otushw-web-back
     build:
       context: ./otushw-web-back
-    depends_on:
-      pg:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    hostname: otushw-web-back
     environment:
       RUST_LOG: info
       OTHW_PG_CONNECTION_STRING: postgresql://postgres:password@pg:5432/postgres
-      OTHW_CITUS_CONNECTION_STRING: postgresql://postgres:password@pg:5432/postgres
+      OTHW_CITUS_CONNECTION_STRING: postgresql://postgres:password@citus-coordinator:5432/postgres
       OTHW_REDIS_CONNECTION_STRING: redis://redis/
       OTHW_USE_REDIS: false
       OTHW_FEED_LIMIT: 100
     ports:
       - "8080:8080"
+    depends_on:
+      pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      coordinator:
+        condition: service_healthy
     networks:
       - otushw-network
 
 volumes:
-  postgres_data:
   pg_data:
   redis_data:
+  coordinator_data:
+  worker1_data:
+  worker2_data:
 
 networks:
   otushw-network:

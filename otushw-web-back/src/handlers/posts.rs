@@ -57,7 +57,7 @@ async fn add_post(
         id: post_id,
         user_id: my_id,
         ts: now,
-        body: body.0.body,
+        body: body.body.clone(),
     };
 
     if app_data.use_redis {
