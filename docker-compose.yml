@@ -109,7 +109,7 @@ services:
     environment:
       RUST_LOG: info
       OTHW_PG_CONNECTION_STRING: postgresql://postgres:password@pg:5432/postgres
-      OTHW_CITUS_CONNECTION_STRING: postgresql://postgres:password@citus-coordinator:5432/postgres
+      OTHW_CITUS_CONNECTION_STRING: postgresql://postgres:postgres@coordinator:5432/postgres
       OTHW_REDIS_CONNECTION_STRING: redis://redis/
       OTHW_USE_REDIS: false
       OTHW_FEED_LIMIT: 100
