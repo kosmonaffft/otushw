@@ -1,2 +1,8 @@
 *.iml
+
 .idea/
+
+load-testing/.idea/
+load-testing/.venv/
+
+otushw-web-back/target/
