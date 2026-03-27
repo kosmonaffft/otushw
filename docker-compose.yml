@@ -125,6 +125,19 @@ services:
     networks:
       - otushw-network
 
+  otushw-web-front:
+    image: otushw-web-front:1.0.0
+    build:
+      context: ./otushw-web-front
+    hostname: otushw-web-front
+    ports:
+      - "4200:80"
+    depends_on:
+      otushw-web-back:
+        condition: service_started
+    networks:
+      - otushw-network
+
 volumes:
   pg_data:
   redis_data:
